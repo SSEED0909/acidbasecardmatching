@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>산과 염기 카드 짝 맞추기 게임</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet" />
+  <style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink: #4a4753;
+  --ink-soft: #8b8794;
+  --bg1: #FFF6D6;
+  --bg2: #FFFBEE;
+  --panel: #FFFDF7;
+  --primary: #FFC93C;
+  --deep: #F2A308;
+  --accent: #FF93AE;
+  --accent2: #7FC0FF;
+  --backA: #FFD862;
+  --backB: #F4A60C;
+  --font-display: 'Jua', 'Gowun Dodum', sans-serif;
+}
+
+html, body { height: 100%; }
+body {
+  font-family: 'Gowun Dodum', system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg1);
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, var(--bg2), transparent 60%),
+    var(--bg1);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(20px, 4vh, 48px) 18px 56px;
+  overflow: hidden;
+}
+
+.card-deco {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(2px);
+  opacity: .5;
+  pointer-events: none;
+  z-index: 0;
+}
+.c1 { width: 180px; height: 180px; left: -50px; top: 12%; background: var(--accent); }
+.c2 { width: 130px; height: 130px; right: -30px; top: 30%; background: var(--accent2); }
+.c3 { width: 150px; height: 150px; right: 8%; bottom: -50px; background: var(--primary); opacity: .35; }
+
+.board {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 880px;
+  background: var(--panel);
+  border-radius: 36px;
+  padding: clamp(22px, 3.5vw, 40px);
+  box-shadow:
+    0 2px 0 #fff inset,
+    0 30px 60px -28px rgba(80, 60, 30, .35),
+    0 8px 24px -16px rgba(80, 60, 30, .3);
+}
+
+.hd { text-align: center; margin-bottom: 18px; }
+.subject {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--deep);
+  background: color-mix(in srgb, var(--primary) 28%, #fff);
+  padding: 5px 14px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+  letter-spacing: .01em;
+}
+.title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(26px, 4.4vw, 40px);
+  color: var(--ink);
+  line-height: 1.1;
+  letter-spacing: .01em;
+  text-shadow: 0 2px 0 #fff;
+}
+.question {
+  font-family: var(--font-display);
+  font-size: clamp(15px, 2.3vw, 19px);
+  color: var(--deep);
+  margin-top: 8px;
+}
+
+.diff-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 16px 0 22px;
+  flex-wrap: wrap;
+}
+.diff {
+  font-family: var(--font-display);
+  white-space: nowrap;
+  font-size: 16px;
+  color: var(--ink-soft);
+  background: #fff;
+  border: 2.5px solid color-mix(in srgb, var(--ink-soft) 20%, #fff);
+  border-radius: 999px;
+  padding: 8px 22px;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.diff.sel {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--deep);
+  box-shadow: 0 5px 0 var(--deep);
+}
+.diff:disabled { cursor: not-allowed; opacity: .65; }
+.soon {
+  font-family: 'Gowun Dodum', sans-serif;
+  font-size: 10px;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--ink-soft) 16%, #fff);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(10px, 1.6vw, 16px);
+}
+
+.card {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  aspect-ratio: 0.82;
+  perspective: 900px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.card:disabled { cursor: default; }
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .5s cubic-bezier(.5, 1.4, .5, 1);
+}
+.bouncy .card:not(:disabled):hover .card-inner { transform: translateY(-4px) rotate(-1deg); }
+.card.up .card-inner,
+.card.matched .card-inner { transform: rotateY(180deg); }
+
+.face {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.face.back {
+  background: linear-gradient(155deg, var(--backA), var(--backB));
+  box-shadow:
+    0 2px 0 rgba(255,255,255,.5) inset,
+    0 8px 0 var(--deep),
+    0 14px 22px -10px rgba(80,60,30,.5);
+}
+.face.back::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 16px;
+  border: 2.5px dashed rgba(255,255,255,.55);
+}
+.back-q {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 6vw, 52px);
+  color: #fff;
+  text-shadow: 0 3px 0 rgba(0,0,0,.08);
+}
+
+.face.front {
+  transform: rotateY(180deg);
+  background: #fff;
+  padding: 10px 9px 12px;
+  gap: 4px;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--primary) 45%, #fff) inset,
+    0 8px 18px -10px rgba(80,60,30,.4);
+}
+.art {
+  width: clamp(56px, 9vw, 80px);
+  height: clamp(56px, 9vw, 80px);
+  flex-shrink: 0;
+}
+.ctext {
+  font-family: var(--font-display);
+  font-size: clamp(11px, 1.55vw, 14px);
+  line-height: 1.35;
+  text-align: center;
+  color: var(--ink);
+  white-space: pre-line;
+  text-wrap: balance;
+}
+
+.card.matched .face.front {
+  background: color-mix(in srgb, var(--accent2) 22%, #fff);
+  box-shadow: 0 0 0 3px var(--accent2) inset, 0 6px 14px -8px rgba(80,60,30,.4);
+}
+.badge {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--deep);
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,.2);
+}
+.card.pop { animation: pop .55s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.12) rotate(2deg); }
+  60% { transform: scale(.96); }
+  100% { transform: scale(1); }
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 22px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.prog { display: flex; align-items: center; gap: 12px; }
+.hearts { display: flex; gap: 3px; }
+.heart {
+  font-size: 22px;
+  color: color-mix(in srgb, var(--ink-soft) 28%, #fff);
+  transition: transform .3s cubic-bezier(.3,1.6,.5,1), color .3s;
+}
+.heart.on { color: var(--accent); transform: scale(1.18); }
+.prog-txt { font-family: var(--font-display); font-size: 15px; color: var(--ink-soft); }
+
+.restart {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--deep);
+  background: #fff;
+  border: 2.5px solid color-mix(in srgb, var(--primary) 55%, #fff);
+  border-radius: 999px;
+  padding: 9px 22px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--primary) 55%, #fff);
+  transition: transform .12s, box-shadow .12s;
+  white-space: nowrap;
+}
+.restart:hover { transform: translateY(-2px); box-shadow: 0 6px 0 color-mix(in srgb, var(--primary) 55%, #fff); }
+.restart:active { transform: translateY(2px); box-shadow: 0 2px 0 color-mix(in srgb, var(--primary) 55%, #fff); }
+
+.endwrap {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--deep) 28%, rgba(40,30,20,.45));
+  animation: fade .4s ease;
+}
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.endcard {
+  position: relative;
+  z-index: 2;
+  background: var(--panel);
+  border-radius: 32px;
+  padding: 40px 48px 36px;
+  text-align: center;
+  box-shadow: 0 30px 70px -20px rgba(0,0,0,.4);
+  animation: drop .6s cubic-bezier(.3, 1.5, .5, 1);
+}
+@keyframes drop {
+  0% { transform: translateY(-40px) scale(.8); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.end-emoji { font-size: 56px; animation: wob 1.4s ease-in-out infinite; }
+@keyframes wob { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+.end-title { font-family: var(--font-display); font-size: 34px; color: var(--deep); margin-top: 6px; }
+.end-sub { font-family: var(--font-display); font-size: 17px; color: var(--ink-soft); margin-top: 6px; }
+.end-stars { font-size: 26px; letter-spacing: 4px; margin: 14px 0 20px; }
+.end-btn {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: #fff;
+  background: var(--primary);
+  border: 0;
+  border-radius: 999px;
+  padding: 13px 40px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 var(--deep);
+  transition: transform .12s, box-shadow .12s;
+}
+.end-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--deep); }
+.end-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 var(--deep); }
+
+/* ── 우하단 고정 버튼 ─────────────────────────────────── */
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 100;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--deep);
+  background: rgba(255,255,255,.92);
+  border: 1.5px solid rgba(0,0,0,.10);
+  border-radius: 999px;
+  padding: 8px 18px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  backdrop-filter: blur(8px);
+  transition: transform .12s, box-shadow .12s;
+  white-space: nowrap;
+}
+.fab:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.16); }
+.fab:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+
+.confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.confetti i {
+  position: absolute;
+  top: -8%;
+  display: block;
+  animation-name: fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes fall {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(112vh) rotate(620deg); opacity: .9; }
+}
+
+@media (max-width: 560px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+  .board { border-radius: 28px; }
+}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+
+  <script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ── 일러스트 SVG ──────────────────────────────────────── */
+const VB = { viewBox: '0 0 96 96', width: '100%', height: '100%' };
+let _uid = 0;
+function uid() { return 'clip' + (++_uid); }
+
+function Beaker({ liquid = '#BFE3FF', deep = '#8FCBF7' }) {
+  const cid = useRef(uid()).current;
+  return (
+    <g>
+      <path d="M28 30 h40 v34 a16 16 0 0 1 -16 16 h-8 a16 16 0 0 1 -16 -16 Z"
+            fill="#fff" stroke="#3a3a46" strokeWidth="3.2" strokeLinejoin="round" opacity="0.96" />
+      <clipPath id={cid}>
+        <path d="M28 30 h40 v34 a16 16 0 0 1 -16 16 h-8 a16 16 0 0 1 -16 -16 Z" />
+      </clipPath>
+      <g clipPath={`url(#${cid})`}>
+        <rect x="26" y="48" width="44" height="40" fill={liquid} />
+        <ellipse cx="48" cy="48" rx="22" ry="5" fill={deep} />
+        <g fill="#3a3a46">
+          <circle cx="42" cy="60" r="2.4" />
+          <circle cx="54" cy="60" r="2.4" />
+          <path d="M44 66 q4 4 8 0" stroke="#3a3a46" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <circle cx="38" cy="64" r="2.6" fill="#ff9bb0" opacity="0.7" stroke="none" />
+          <circle cx="58" cy="64" r="2.6" fill="#ff9bb0" opacity="0.7" stroke="none" />
+        </g>
+      </g>
+      <ellipse cx="48" cy="30" rx="20" ry="4.6" fill="#fff" stroke="#3a3a46" strokeWidth="3.2" />
+      <rect x="34" y="40" width="3.4" height="20" rx="1.7" fill="#fff" opacity="0.85" />
+    </g>
+  );
+}
+
+function Strip({ color = '#6FA8E6', transform }) {
+  return (
+    <g transform={transform}>
+      <rect x="-6" y="-26" width="12" height="52" rx="5" fill={color} stroke="#3a3a46" strokeWidth="3" />
+      <rect x="-2.5" y="-22" width="2.6" height="40" rx="1.3" fill="#fff" opacity="0.5" />
+    </g>
+  );
+}
+
+function Sparkle({ x, y, s = 1, c = '#FFD23F' }) {
+  return (
+    <path transform={`translate(${x} ${y}) scale(${s})`}
+          d="M0 -7 Q1.2 -1.2 7 0 Q1.2 1.2 0 7 Q-1.2 1.2 -7 0 Q-1.2 -1.2 0 -7 Z"
+          fill={c} stroke="#3a3a46" strokeWidth="1.4" strokeLinejoin="round" />
+  );
+}
+
+function IBlueInAcid() {
+  return (
+    <svg {...VB}>
+      <Sparkle x={20} y={20} s={0.8} c="#FFE08A" />
+      <Beaker liquid="#FFF0B8" deep="#FFD56B" />
+      <Strip color="#6FA8E6" transform="translate(48 30) rotate(8)" />
+    </svg>
+  );
+}
+
+function ITurnRed() {
+  return (
+    <svg {...VB}>
+      <Sparkle x={24} y={26} s={0.9} c="#FF8FA8" />
+      <Sparkle x={70} y={34} s={0.7} c="#FF8FA8" />
+      <Strip color="#F4738B" transform="translate(48 50) rotate(-6)" />
+      <path d="M30 26 q8 -6 16 0" stroke="#F4738B" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IRedInBase() {
+  return (
+    <svg {...VB}>
+      <Sparkle x={20} y={20} s={0.8} c="#A8E6CF" />
+      <Beaker liquid="#D6F0E2" deep="#9BD9BD" />
+      <Strip color="#F4738B" transform="translate(48 30) rotate(8)" />
+    </svg>
+  );
+}
+
+function ITurnBlue() {
+  return (
+    <svg {...VB}>
+      <Sparkle x={24} y={26} s={0.9} c="#8FC7FF" />
+      <Sparkle x={70} y={34} s={0.7} c="#8FC7FF" />
+      <Strip color="#5C9BE6" transform="translate(48 50) rotate(-6)" />
+      <path d="M30 26 q8 -6 16 0" stroke="#5C9BE6" strokeWidth="3" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IDropLemon() {
+  return (
+    <svg {...VB}>
+      <g transform="translate(30 8) rotate(18)">
+        <rect x="-5" y="0" width="10" height="20" rx="4" fill="#C9B7F0" stroke="#3a3a46" strokeWidth="2.6" />
+        <rect x="-3.5" y="20" width="7" height="14" rx="2.5" fill="#fff" stroke="#3a3a46" strokeWidth="2.6" />
+        <path d="M0 34 l3 6 a3 3 0 0 1 -6 0 Z" fill="#E7DBFF" stroke="#3a3a46" strokeWidth="2.2" />
+      </g>
+      <path d="M44 44 q3 4 0 7 q-3 -3 0 -7 Z" fill="#E7DBFF" stroke="#3a3a46" strokeWidth="2" />
+      <g transform="translate(50 68)">
+        <ellipse cx="0" cy="0" rx="26" ry="19" fill="#FFD23F" stroke="#3a3a46" strokeWidth="3.2" />
+        <ellipse cx="-9" cy="-7" rx="6" ry="3.6" fill="#fff" opacity="0.6" />
+        <circle cx="-6" cy="2" r="2.2" fill="#3a3a46" />
+        <circle cx="8" cy="2" r="2.2" fill="#3a3a46" />
+        <path d="M-3 9 q4 4 8 0" stroke="#3a3a46" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+      </g>
+    </svg>
+  );
+}
+
+function INoChange() {
+  return (
+    <svg {...VB}>
+      <g transform="translate(48 54)">
+        <ellipse cx="0" cy="0" rx="28" ry="21" fill="#FFD23F" stroke="#3a3a46" strokeWidth="3.2" />
+        <ellipse cx="-10" cy="-8" rx="7" ry="4" fill="#fff" opacity="0.6" />
+        <path d="M-13 -1 q4 4 8 0" stroke="#3a3a46" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+        <path d="M5 -1 q4 4 8 0" stroke="#3a3a46" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+        <path d="M-3 8 q4 3 8 0" stroke="#3a3a46" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        <circle cx="-17" cy="6" r="3" fill="#ff9bb0" opacity="0.6" />
+        <circle cx="17" cy="6" r="3" fill="#ff9bb0" opacity="0.6" />
+      </g>
+      <g transform="translate(74 24)">
+        <rect x="-9" y="-3" width="18" height="3.4" rx="1.7" fill="#9b9b96" />
+        <rect x="-9" y="3" width="18" height="3.4" rx="1.7" fill="#9b9b96" />
+      </g>
+    </svg>
+  );
+}
+
+function ICabbage() {
+  return (
+    <svg {...VB}>
+      <Sparkle x={74} y={24} s={0.7} c="#C9A8F0" />
+      <g transform="translate(48 52)">
+        <circle cx="0" cy="0" r="30" fill="#9B6FD4" stroke="#3a3a46" strokeWidth="3.2" />
+        <path d="M0 -28 Q-14 0 0 28" stroke="#7A4FB8" strokeWidth="2.6" fill="none" opacity="0.7" />
+        <path d="M0 -28 Q14 0 0 28" stroke="#7A4FB8" strokeWidth="2.6" fill="none" opacity="0.7" />
+        <path d="M-26 -8 Q0 0 26 -8" stroke="#7A4FB8" strokeWidth="2.4" fill="none" opacity="0.55" />
+        <ellipse cx="-11" cy="-12" rx="8" ry="5" fill="#fff" opacity="0.35" />
+        <circle cx="-9" cy="2" r="2.6" fill="#fff" />
+        <circle cx="9" cy="2" r="2.6" fill="#fff" />
+        <circle cx="-9" cy="2.5" r="1.4" fill="#3a3a46" />
+        <circle cx="9" cy="2.5" r="1.4" fill="#3a3a46" />
+        <path d="M-4 10 q4 3 8 0" stroke="#fff" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+      </g>
+    </svg>
+  );
+}
+
+function IBlueYellow() {
+  const cid = useRef(uid()).current;
+  return (
+    <svg {...VB}>
+      <Sparkle x={22} y={24} s={0.8} c="#8FC7FF" />
+      <Sparkle x={72} y={30} s={0.8} c="#FFD23F" />
+      <g>
+        <path d="M28 30 h40 v34 a16 16 0 0 1 -16 16 h-8 a16 16 0 0 1 -16 -16 Z"
+              fill="#fff" stroke="#3a3a46" strokeWidth="3.2" strokeLinejoin="round" />
+        <clipPath id={cid}>
+          <path d="M28 30 h40 v34 a16 16 0 0 1 -16 16 h-8 a16 16 0 0 1 -16 -16 Z" />
+        </clipPath>
+        <g clipPath={`url(#${cid})`}>
+          <rect x="26" y="48" width="22" height="40" fill="#7FB6F2" />
+          <rect x="48" y="48" width="22" height="40" fill="#FFD23F" />
+          <ellipse cx="48" cy="48" rx="22" ry="5" fill="#fff" opacity="0.5" />
+        </g>
+        <ellipse cx="48" cy="30" rx="20" ry="4.6" fill="#fff" stroke="#3a3a46" strokeWidth="3.2" />
+        <rect x="34" y="40" width="3.4" height="20" rx="1.7" fill="#fff" opacity="0.85" />
+      </g>
+    </svg>
+  );
+}
+
+/* ── 카드 데이터 ───────────────────────────────────────── */
+const CARDS = [
+  { id: '1a', pair: 1, text: '푸른색 리트머스 시험지는\n산성 용액에서', Art: IBlueInAcid },
+  { id: '1b', pair: 1, text: '붉은색으로 변한다', Art: ITurnRed },
+  { id: '2a', pair: 2, text: '붉은색 리트머스 시험지는\n염기성 용액에서', Art: IRedInBase },
+  { id: '2b', pair: 2, text: '푸른색으로 변한다', Art: ITurnBlue },
+  { id: '3a', pair: 3, text: '페놀프탈레인 용액을\n레몬즙에 떨어뜨리면', Art: IDropLemon },
+  { id: '3b', pair: 3, text: '아무런 변화가 없다', Art: INoChange },
+  { id: '4a', pair: 4, text: '붉은 양배추 용액은\n염기성 용액에서', Art: ICabbage },
+  { id: '4b', pair: 4, text: '푸른색·노란색 계열로\n변한다', Art: IBlueYellow },
+];
+
+const CONFETTI_COLORS = ['#FFC93C', '#FF93AE', '#7FC0FF', '#9BD9BD', '#C9A8F0'];
+
+/* ── 컨페티 ───────────────────────────────────────────── */
+function Confetti() {
+  const pieces = useRef(
+    Array.from({ length: 60 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 0.6,
+      dur: 2.2 + Math.random() * 1.8,
+      size: 7 + Math.random() * 9,
+      rot: Math.random() * 360,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      round: Math.random() > 0.5,
+    }))
+  ).current;
+  return (
+    <div className="confetti" aria-hidden="true">
+      {pieces.map((p) => (
+        <i key={p.id} style={{
+          left: p.left + '%', width: p.size, height: p.size * (p.round ? 1 : 1.4),
+          background: p.color, borderRadius: p.round ? '50%' : '2px',
+          animationDelay: p.delay + 's', animationDuration: p.dur + 's',
+          transform: `rotate(${p.rot}deg)`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+/* ── 효과음 (Web Audio API) ───────────────────────────── */
+function playFlip() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    // 물방울 "통": 높은 음에서 빠르게 아래로 떨어지는 주파수 스윕
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.22);
+    osc.onended = () => ctx.close();
+  } catch (_) {}
+}
+
+function playMatch() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[523, 0], [659, 0.1], [784, 0.2]].forEach(([freq, when]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + when);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime + when);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + when + 0.18);
+      osc.start(ctx.currentTime + when);
+      osc.stop(ctx.currentTime + when + 0.18);
+      osc.onended = () => ctx.close();
+    });
+  } catch (_) {}
+}
+
+/* ── 셔플 ─────────────────────────────────────────────── */
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ── 카드 컴포넌트 ────────────────────────────────────── */
+function Card({ card, faceUp, matched, justMatched, onClick }) {
+  const C = card.Art;
+  return (
+    <button
+      className={'card bouncy' + (faceUp ? ' up' : '') + (matched ? ' matched' : '') + (justMatched ? ' pop' : '')}
+      onClick={onClick} disabled={matched} aria-label={matched ? '맞춘 카드' : '카드'}>
+      <div className="card-inner">
+        <div className="face back">
+          <span className="back-q">?</span>
+        </div>
+        <div className="face front">
+          <div className="art"><C /></div>
+          <div className="ctext">{card.text}</div>
+          {matched && <div className="badge">✓</div>}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* ── 메인 게임 ────────────────────────────────────────── */
+function Game() {
+  const [deck, setDeck] = useState(() => shuffled(CARDS));
+  const [up, setUp] = useState([]);
+  const [matched, setMatched] = useState([]);
+  const [justMatched, setJustMatched] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [won, setWon] = useState(false);
+  const timer = useRef(null);
+
+  const pairsDone = matched.length / 2;
+
+  const reset = useCallback(() => {
+    clearTimeout(timer.current);
+    setDeck(shuffled(CARDS));
+    setUp([]); setMatched([]); setJustMatched([]); setBusy(false); setWon(false);
+  }, []);
+
+  const onCard = (idx) => {
+    if (busy || won) return;
+    const card = deck[idx];
+    if (matched.includes(card.id) || up.includes(idx)) return;
+
+    const next = [...up, idx];
+    setUp(next);
+    playFlip();
+
+    if (next.length === 2) {
+      const [a, b] = next;
+      if (deck[a].pair === deck[b].pair) {
+        const ids = [deck[a].id, deck[b].id];
+        setBusy(true);
+        timer.current = setTimeout(() => {
+          setMatched((m) => [...m, ...ids]);
+          playMatch();
+          setJustMatched(ids);
+          setUp([]); setBusy(false);
+          setTimeout(() => setJustMatched([]), 600);
+        }, 360);
+      } else {
+        setBusy(true);
+        timer.current = setTimeout(() => { setUp([]); setBusy(false); }, 1000);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (pairsDone === 4 && !won) {
+      const id = setTimeout(() => setWon(true), 900);
+      return () => clearTimeout(id);
+    }
+  }, [pairsDone, won]);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  return (
+    <div className="stage bouncy">
+      <div className="card-deco c1" /><div className="card-deco c2" /><div className="card-deco c3" />
+
+      <main className="board">
+        <header className="hd">
+          <div className="subject">6학년 1학기 · 1. 산과 염기</div>
+          <h1 className="title">산과 염기 카드 짝 맞추기</h1>
+          <div className="question">지시약으로 여러 가지 용액을 분류해 볼까?</div>
+        </header>
+
+        <div className="diff-row">
+          <button className="diff sel">쉬움</button>
+          <button className="diff" disabled>보통 <span className="soon">준비중</span></button>
+          <button className="diff" disabled>어려움 <span className="soon">준비중</span></button>
+        </div>
+
+        <div className="grid">
+          {deck.map((card, idx) => (
+            <Card key={card.id} card={card}
+              faceUp={up.includes(idx) || matched.includes(card.id)}
+              matched={matched.includes(card.id)}
+              justMatched={justMatched.includes(card.id)}
+              onClick={() => onCard(idx)} />
+          ))}
+        </div>
+
+        <div className="status">
+          <div className="prog">
+            <div className="hearts">
+              {[0, 1, 2, 3].map((i) => (
+                <span key={i} className={'heart' + (i < pairsDone ? ' on' : '')}>♥</span>
+              ))}
+            </div>
+            <span className="prog-txt">{pairsDone} / 4 쌍 완료</span>
+          </div>
+          <button className="restart" onClick={reset}>↻ 다시 하기</button>
+        </div>
+      </main>
+
+      <button className="fab" onClick={reset}>🔀 카드 새로 섞기</button>
+
+      {won && (
+        <div className="endwrap">
+          <Confetti />
+          <div className="endcard">
+            <div className="end-emoji">🎉</div>
+            <div className="end-title">참 잘했어요!</div>
+            <div className="end-sub">모든 카드 짝을 다 맞췄어요</div>
+            <div className="end-stars">⭐ ⭐ ⭐</div>
+            <button className="end-btn" onClick={reset}>다시 하기</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Game />);
+  </script>
+</body>
+</html>
